@@ -56,7 +56,7 @@ new Vue({
         const pdfDocGenerator = pdfMake.createPdf(pdfDefinition);
         pdfDocGenerator.getBase64(resolve);
       });
-  },
+    },
 
     async selectStorageAndContinue() {
       this.awaitingSignature = true;
