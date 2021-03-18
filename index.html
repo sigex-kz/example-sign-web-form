@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <!-- Общая часть заголовка -->
+      <title>Пример подписания веб формы</title>
+
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+      <link rel="stylesheet" href="css/custom.css">
+
+      <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+      <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+
+      <script src="js/deps/ncalayer-client.js"></script>
+    </head>
+  <body>
+    <div id="app-vue-index">
+      <div class="container" v-cloak>
+
+        <div class="row justify-content-center mt-5">
+          <div class="col-md-auto">
+            <h2 class="mb-3">Пример подписания веб формы ЭЦП</h2>
+          </div>
+        </div>
+
+        <div class="row mb-5">
+          <div class="col-md-auto">
+            <p>Данный пример демонстрирует как без единой строчки бекенд кода реализовать:</p>
+            <ul>
+              <li>создание PDF документа из шаблона и данных, введенных пользователем в веб форме;</li>
+              <li>подписание PDF документа цифровой подписью (НУЦ РК);</li>
+              <li>обеспечение юридической значимости документа путем выполнения проверки подписи;</li>
+              <li>пересылку подписанного документа конечному пользователю по электронной почте.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Отображение ошибок -->
+        <div v-if="error" class="row justify-content-center">
+          <div class="col-md-auto">
+            <h3 class="text-danger mb-3">{{ error.message }}</h3>
+            <p>{{ error.description }}</p>
+            <button type="button" class="btn btn-outline-danger" v-on:click="reloadPage">Перезагрузить страницу и попробовать снова</button>
+          </div>
+        </div>
+
+        <!-- Не обнаружен NCALayer -->
+        <div v-else-if="ncaLayerNotAwailable" class="row justify-content-center">
+          <div class="col-md-auto">
+            <h3 class="text-danger mb-3">Не удалось обнаружить <strong>NCALayer</strong>.</h3>
+            <p>NCALayer необходим для подписания документов ЭЦП.</p>
+            <button type="button" class="btn btn-outline-danger" v-on:click="reloadPage">Перезагрузить страницу и попробовать снова</button>
+          </div>
+        </div>
+
+        <!-- Подключение -->
+        <div v-else-if="connecting" class="row justify-content-center">
+          <div class="col-md-auto">
+            <div class="d-flex justify-content-center">
+              <div class="spinner-grow"></div>
+            </div>
+            <p>Подключаемся к NCALayer...</p>
+          </div>
+        </div>
+
+        <div v-else class="row justify-content-center">
+          <div class="col-md-auto">
+
+            <!-- Форма -->
+            <div class="card" v-if="!dataB64">
+              <div class="card-body">
+                <form v-on:submit.prevent="compilePDF">
+                  <h2>{{ formHeader }}</h2>
+                  <p>{{ formIntro }}</p>
+                  <div v-for="formItem in formItems" class="form-group">
+                    <label>{{ formItem.label }}</label>
+                    <input v-model="formItem.value" type="text" class="form-control">
+                  </div>
+                  <button type="submit" class="btn btn-primary">Сформировать документ</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Подписание -->
+            <div v-else-if="!signed">
+              <form v-on:submit.prevent="selectStorageAndContinue">
+
+                <!-- Информационный блок -->
+                <fieldset v-bind:disabled="awaitingSignature">
+                    <p>Вы подписываете документ <a v-bind:href="`data:application/octet-stream;base64,${dataB64}`" target="_blank" v-bind:download="title">{{ title }}</a>.</p>
+
+                    <div class="form-group">
+                      <label>Укажите свой адрес электронной почты для того, чтобы мы отправили на него подписанный документ.</label>
+                      <input type="email" class="form-control" v-model="email" placeholder="someone@example.kz"></input>
+                    </div>
+                </fieldset>
+
+                <!-- Блок подписания -->
+                <div class="d-flex justify-content-end">
+                  <button v-if="!awaitingSignature" type="submit" class="btn btn-primary mb-1">Подписать документ</button>
+                  <button v-else type="button" class="btn btn-primary mb-1" disabled>
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Подписываем...
+                  </button>
+
+                  <button type="button" class="btn btn-secondary mb-1 ml-1" v-on:click="reloadPage()">Отмена</button>
+                </div>
+              </form>
+
+            </div>
+
+            <!-- Подписали, отчет -->
+            <div v-else>
+              <p>
+                Документ <a v-bind:href="`data:application/octet-stream;base64,${dataB64}`" target="_blank" v-bind:download="title">{{ title }}</a> успешно подписан.
+              </p>
+              <p><a v-bind:href="sigexDocumentURL" target="_blank">Страница подписанного документа</a>.</p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <script src="js/app-vue-index.js"></script>
+  </body>
+</html>
